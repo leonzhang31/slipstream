@@ -2,16 +2,6 @@ Slipstream
 
 A 2D drift racing game. The car accelerates on its own. You only steer left and right. Hitting walls slows you down.
 
-Running it
-
-Open dist/index.html in a browser, or run this from the slipstream folder:
-
-python3 -m http.server 4173 --bind 127.0.0.1 --directory dist
-
-Then open http://localhost:4173.
-
-There is nothing to install or build.
-
 Controls
 
 Player 1: A / D
