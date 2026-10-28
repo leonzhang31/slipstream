@@ -281,11 +281,13 @@ function selectTrack(id){
  $('track-select').value=track.id;$('track-subtitle').textContent=`${track.kind==='gp'?'Grand Prix · drift edition':track.subtitle} · ${(circuitLength/UNITS_PER_METRE/1000).toFixed(3)} km`;resetCameras();
  $('track-name').textContent=track.name.toUpperCase();
  if($('track-select').options)for(const option of $('track-select').options){const entry=tracks.find(t=>t.id===option.value);if(entry?.remixStats)option.textContent=`${entry.name} · ${(entry.remixStats.remixedLength/UNITS_PER_METRE/1000).toFixed(3)} km`}
- $('overlay').classList.remove('hidden');document.querySelector('.start-card').innerHTML=startMarkup;$('start').onclick=begin;
+ $('overlay').classList.add('hidden');document.querySelector('.start-card').innerHTML=startMarkup;$('start').onclick=begin;
+ $('launch-race').innerHTML='Start race <span aria-hidden="true">→</span>';
  $('start-hint').textContent=raceType==='friend'?'P1: A / D · P2: ← / →':'← → OR A / D TO STEER';
  $('controls-label').textContent=raceType==='friend'?'P1: A / D · P2: ← / →':'← / → OR A / D';
  const people=humanCount(),timeTrial=raceType==='ghost',hasAI=fieldCount()>people;
  const modeName={ai:'Solo vs AI',friend:'Local multiplayer',ghost:'Personal best chase',derby:'Derby'}[raceType];
+ $('mode-help').textContent={ai:'Three laps against the AI. Beginner is a good place to start.',friend:'Share one keyboard. Each player has their own controls and view. First human to finish three laps ends the race.',ghost:'Drive alone and chase your best lap. Finish a lap to record your first ghost.',derby:'Finish three laps or wreck all the AI. Expect harder hits and longer spins.'}[raceType];
  $('setup-summary').textContent=track.name+' · '+fieldCount()+(fieldCount()===1?' car':' cars')+' · '+modeName;
  $('car-count').value=String(raceType==='derby'?derbyCars:carCount);$('car-count').disabled=timeTrial;$('car-count-group').hidden=timeTrial;
  if($('car-count').options)for(const option of $('car-count').options)option.disabled=Number(option.value)<people;
@@ -359,11 +361,12 @@ function playerDistance(){return car?.wrecked?car.wreckDistance:playerFinished?3
 function updateDrivingLabels(){
  const people=humanCount();
  $('controls-label').textContent=people>1?activeDrivers().map(d=>d.toUpperCase()+' '+keyLabels[d]).join(' | '):'A/D or ←/→';
+ $('setup-controls').textContent=$('controls-label').textContent;
  const hint=$('start-hint');if(hint)hint.textContent=$('controls-label').textContent;
  for(const driver of HUMAN_DRIVERS){
   $(driver+'-keys').textContent=driver==='p1'&&people===1?'A / D or ← / →':keyLabels[driver];
   $(driver+'-car-setting').hidden=driverNumber(driver)>people;
-  $(driver+'-car').value=carChoices[driver];$(driver+'-car-description').textContent=carModels[carChoices[driver]].description;
+  $(driver+'-car').value=carChoices[driver];$(driver+'-car-description').textContent={balanced:'Balanced slides and predictable recovery.',agile:'Quick direction changes. Use small inputs.',drift:'Long slides. Plan direction changes early.'}[carChoices[driver]];
   $(driver+'-hp').value=String(setups[driver].hp);$(driver+'-grid').value=String(chosenGrid(driver));$(driver+'-grid-setting').hidden=raceType==='ghost';
   if($(driver+'-grid').options)for(const option of $(driver+'-grid').options)option.disabled=Number(option.value)>fieldCount();
  }
@@ -435,7 +438,7 @@ function moveVehicle(v,steer,dt,player){
  // Grip while turning controls entry; grip on release controls catching the slide.
  const turn=Math.abs(v.steer),tireGrip=(model.recoveryGrip??1)+((model.driftGrip??1)-(model.recoveryGrip??1))*turn;
  const grip=(2.8-turn*1.35)*model.grip*tireGrip;
- const enginePower=(v.driver==='ai'||(!v.driver&&!player&&raceType==='ai'))?aiLevels[difficulty].pace:1;
+ const enginePower=(v.driver==='ai'||(!v.driver&&!player&&raceType==='ai'))?aiLevels[difficulty].pace*(v.ai?.trafficThrottle??1):1;
  const power=setupFor(v).hp/300;
  const vForward=forward+(ACCELERATION*enginePower*model.accel*power*(1-damage*.18)*(v.boostTimer>0?1.18:1)-Math.max(0,forward)*DRAG*model.drag*(1+damage*.12)*(1-.20*(v.draft||0)))*dt;
  const vLateral=lateral*Math.exp(-grip*dt);
@@ -551,33 +554,64 @@ function resolveCars(a,b){
 }
 // Plan in circuit coordinates so a car on a nearby switchback is not a blocker.
 function planTraffic(v,near,speed){
- const ai=v.ai,style=styleFor(v),horizon=clamp((110+speed*.7)*style.horizon,140,420),traffic=[];
+ const ai=v.ai,style=styleFor(v),horizon=clamp((140+speed*.85)*style.horizon,160,480),traffic=[];
+ const angle=sampleTrack(near.s).angle,fx=Math.cos(angle),fy=Math.sin(angle);
+ const offset=-(v.x-near.x)*fy+(v.y-near.y)*fx,forward=v.vx*fx+v.vy*fy;
+ if(!ai.trafficStarted){ai.passOffset=ai.trafficOffset=clamp(offset,-ROAD/2+38,ROAD/2-38);ai.trafficStarted=true}
  for(const other of racers){
   if(other===v||other.finishTime!==null||other.wrecked||Math.hypot(other.x-v.x,other.y-v.y)>horizon+80)continue;
   const on=vehicleNear(other);let ahead=on.s-near.s;
   if(ahead>circuitLength/2)ahead-=circuitLength;if(ahead<-circuitLength/2)ahead+=circuitLength;
-  if(ahead<-40||ahead>horizon)continue;
-  const angle=sampleTrack(on.s).angle;
-  traffic.push({other,ahead,closing:speed-(other.vx*Math.cos(angle)+other.vy*Math.sin(angle)),offset:-(other.x-on.x)*Math.sin(angle)+(other.y-on.y)*Math.cos(angle)});
+  if(ahead<-180||ahead>horizon)continue;
+  const heading=sampleTrack(on.s).angle,tx=Math.cos(heading),ty=Math.sin(heading);
+  const yaw=angleDifference(other.angle,heading);
+  traffic.push({other,ahead,forward:other.vx*tx+other.vy*ty,offset:-(other.x-on.x)*ty+(other.y-on.y)*tx,
+   lateral:-other.vx*ty+other.vy*tx,halfWidth:8*Math.abs(Math.cos(yaw))+17*Math.abs(Math.sin(yaw))});
  }
- const angle=sampleTrack(near.s).angle,offset=-(v.x-near.x)*Math.sin(angle)+(v.y-near.y)*Math.cos(angle);
- if(traffic.some(t=>t.other===ai.passTarget))ai.passHold=.6;
- const blocker=traffic.filter(t=>t.ahead>-25&&t.ahead<55+Math.max(0,t.closing)*1.3&&Math.abs(t.offset-offset)<style.clearance-2).sort((a,b)=>a.ahead-b.ahead)[0];
- ai.blockerDistance=blocker?blocker.ahead:Infinity;
+ const inLane=t=>Math.abs(t.offset-offset)<style.clearance-2;
+ const blocker=traffic.filter(t=>t.ahead>-25&&t.ahead<60+Math.max(0,forward-t.forward)*1.4&&inLane(t)).sort((a,b)=>a.ahead-b.ahead)[0];
+ const nearby=traffic.some(t=>Math.abs(t.ahead)<180);
+ ai.trafficNearby=nearby;
+ ai.trafficCrowded=traffic.some(t=>Math.abs(t.ahead)<100&&Math.abs(t.offset-offset)<70);
+ ai.blockerDistance=blocker?blocker.ahead:Infinity;ai.trafficThrottle=1;
  if(blocker){
   const limit=ROAD/2-38,lane=Math.min(style.lane,ROAD*.29),previous=ai.passOffset||0;
-  const candidates=[previous,-lane,lane,clamp(blocker.offset-style.passGap,-limit,limit),clamp(blocker.offset+style.passGap,-limit,limit)];
+  const candidates=[previous,-lane,lane,-limit,limit,clamp(blocker.offset-style.passGap,-limit,limit),clamp(blocker.offset+style.passGap,-limit,limit)];
+  const passing=traffic.find(t=>t.other===ai.passTarget&&t.ahead>-65),passSide=passing?Math.sign(previous-passing.offset):0;
   let best=previous,bestCost=Infinity;
   for(const candidate of candidates){
    let cost=Math.abs(candidate-offset)*.12+Math.abs(candidate)*.02;
-   if(Math.abs(candidate-previous)<1&&ai.passHold>0)cost-=5;
+   if(Math.abs(candidate-previous)<1&&ai.passHold>0)cost-=8;
+   if(passSide&&(candidate-passing.offset)*passSide<10)cost+=100;
    for(const t of traffic){
+    const closing=forward-t.forward,meeting=t.ahead-closing*.6;
+    if(t.ahead<-55&&meeting<-55)continue;
     const proximity=clamp(1-Math.max(0,t.ahead)/horizon,.15,1);
-    cost+=Math.max(0,style.clearance-Math.abs(candidate-t.offset))*proximity*6;
+    const predicted=t.offset+clamp(t.lateral,-60,60)*.2;
+    cost+=Math.max(0,Math.max(style.clearance,20+t.halfWidth)-Math.abs(candidate-predicted))*proximity*6;
+    // Never sweep across an alongside car or a faster car arriving from behind.
+    if((Math.abs(t.ahead)<55||t.ahead<0&&meeting>-55)&&(t.offset-offset)*(t.offset-candidate)<0)cost+=250;
    }
    if(cost<bestCost){bestCost=cost;best=candidate}
   }
-  ai.passOffset=best;ai.passHold=.6;ai.passTarget=blocker.other;
+  ai.passOffset=best;ai.passHold=.7;ai.passTarget=blocker.other;
+  // Ease off only while the current corridor is occupied. Engine drag creates
+  // room to merge; an open passing lane immediately restores full power.
+  if(!(raceType==='derby'&&ai.derbyAttack>0)&&blocker.ahead>0&&Math.abs(blocker.offset-offset)<24+blocker.halfWidth){
+   const targetSpeed=Math.max(90,blocker.forward+Math.max(0,blocker.ahead-48)*1.5);
+   if(forward>targetSpeed)ai.trafficThrottle=clamp((DRAG*targetSpeed+(targetSpeed-forward)*1.8)/(ACCELERATION*aiLevels[difficulty].pace),0,1);
+  }
+ }else if(nearby){
+  // Keep separate lanes through a pack instead of all merging onto the centre.
+  if(traffic.some(t=>t.other===ai.passTarget&&t.ahead>-55&&t.ahead<90))ai.passHold=.3;
+  else if(ai.passHold<=0){
+   const clear=traffic.every(t=>{
+    const ahead=t.ahead-(forward-t.forward)*.6,clearance=18+t.halfWidth;
+    if(ahead>-45&&ahead<65&&Math.abs(t.offset)<clearance)return false;
+    return Math.abs(t.ahead)>=55||(t.offset-offset)*t.offset>=0;
+   });
+   if(clear){ai.passOffset*=.85;if(Math.abs(ai.passOffset)<2){ai.passOffset=0;ai.passTarget=null}}
+  }
  }else if(ai.passHold<=0){ai.passOffset=0;ai.passTarget=null}
 }
 // Derby rivals make short, deliberate rear-quarter attacks, then return to racing.
@@ -608,6 +642,7 @@ function updateRacer(v,dt){
   const ai=v.ai,level=aiLevels[difficulty];
   if(raceType==='derby'){ai.derbyAttack=Math.max(0,(ai.derbyAttack||0)-dt);ai.derbyCooldown=Math.max(0,(ai.derbyCooldown||0)-dt)}
   ai.passHold=Math.max(0,(ai.passHold||0)-dt);
+  ai.trafficTimer=Math.max(0,(ai.trafficTimer||0)-dt);
   ai.trafficOffset=(ai.trafficOffset||0)+((ai.passOffset||0)-(ai.trafficOffset||0))*(1-Math.exp(-dt*(level.trafficBlend||5)));
   ai.straightClock+=dt;ai.recovery=Math.max(0,ai.recovery-dt);ai.reaction-=dt;ai.nextMistake-=dt;
   if(ai.nextMistake<=0&&ai.mistakeTime<=0&&ai.recovery===0){
@@ -617,7 +652,8 @@ function updateRacer(v,dt){
   if(ai.reaction<=0||(ai.recovery>0&&Math.hypot(v.vx,v.vy)<45)){
    ai.reaction=level.reaction+Math.random()*level.reactionSpread;
    const near=vehicleNear(v),speed=Math.hypot(v.vx,v.vy);
-   planTraffic(v,near,speed);
+   // Lane planning can run at 16 Hz while steering still reacts every physics step.
+   if(ai.trafficTimer<=0){planTraffic(v,near,speed);ai.trafficTimer=.06}
    // Long-range aiming is for settled racing; close targets recover a spun car.
    const settled=speed>100&&Math.abs(v.spin||0)<.6;
    let lookahead=Math.min((settled?level.lookaheadBase??65:65)+speed*(settled?level.lookaheadSpeed??.3:.3),ROAD*1.8);
@@ -629,7 +665,7 @@ function updateRacer(v,dt){
    }
    const target=sampleTrack(near.s+lookahead);
    // A wandering racing line and delayed decisions replace perfect-frame aim.
-   ai.lineOffset=ai.recovery>0?0:ai.lineOffset*.6+(Math.random()-.5)*ROAD*level.wobble*(ai.passHold>0?.2:1);
+   ai.lineOffset=ai.recovery>0?0:ai.lineOffset*.6+(Math.random()-.5)*ROAD*level.wobble*(ai.passHold>0||ai.trafficNearby?.2:1);
    // Retain the chosen passing side through contact recovery and until clear.
    // Use the inside of a bend to shorten the line; traffic keeps its chosen lane.
    const cornerLine=ai.passHold<=0&&ai.recovery===0?clamp(angleDifference(target.angle,sampleTrack(near.s).angle)*ROAD*(level.racingLine||0),-ROAD*.20,ROAD*.20):0;
@@ -644,7 +680,7 @@ function updateRacer(v,dt){
    const straightness=clamp(1-Math.abs(angleDifference(target.angle,tangent))/.22,0,1);
    const phase=ai.straightClock*1.4+ai.straightPhase;
    const headingBias=(Math.sin(phase)*.7+Math.sin(phase*2.13+.8)*.3)*level.straightAngle;
-   const straightError=ai.recovery===0&&speed>40?headingBias*straightness:0;
+   const straightError=ai.recovery===0&&speed>40?headingBias*straightness*(ai.trafficNearby?.35:1):0;
    // Initiate a small extra yaw into corners, then countersteer as slip grows.
    // The offset fades near walls, in traffic, and while recovering from contact.
    const bend=angleDifference(target.angle,tangent),slip=angleDifference(v.angle,velocityAngle);
@@ -663,9 +699,10 @@ function updateRacer(v,dt){
   steer=ai.steer;
   if(ai.mistakeTime>0){
    ai.mistakeTime=Math.max(0,ai.mistakeTime-dt);
-   if(ai.mistakeType===0)steer*=1-level.strength; // Late turn-in.
-   else if(ai.mistakeType===1)steer=clamp(steer+(Math.sign(steer)||ai.mistakeSign)*level.strength,-1,1);
-   else steer=clamp(steer+ai.mistakeSign*level.strength,-1,1); // A correction in the wrong direction.
+   const strength=level.strength*(ai.trafficCrowded?.4:1);
+   if(ai.mistakeType===0)steer*=1-strength; // Late turn-in.
+   else if(ai.mistakeType===1)steer=clamp(steer+(Math.sign(steer)||ai.mistakeSign)*strength,-1,1);
+   else steer=clamp(steer+ai.mistakeSign*strength,-1,1); // A correction in the wrong direction.
   }
  }
  const next=moveVehicle(v,steer,dt,false);
@@ -696,7 +733,7 @@ function reset(){
    personality:raceType==='derby'?'aggressive':rivalStyle==='mixed'?['racer','cautious','aggressive'][(Math.max(1,i)-1)%3]:rivalStyle,boostCharge:0,boostTimer:0,boostCooldown:0,boostWindow:0,
    driver:i<humanCount()?HUMAN_DRIVERS[i]:'ai',color:racerColors[i],label:i<humanCount()?(humanCount()>1?'P'+(i+1):'YOU'):`AI ${i-humanCount()+1}`,
    total:startDistance,lastS:((startDistance%circuitLength)+circuitLength)%circuitLength,finishTime:null,wrecked:false,wreckDistance:0,
-   ai:{derbyAttack:0,derbyCooldown:i*.12,derbyTarget:null,passOffset:0,trafficOffset:0,passHold:0,blockerDistance:Infinity,straightClock:0,straightPhase:Math.random()*TAU,turnRecovery:0,recovery:0,reaction:0,steer:0,lineOffset:0,nextMistake:aiLevels[difficulty].mistakeEvery*.65+Math.random()*aiLevels[difficulty].mistakeSpread,mistakeTime:0,mistakeType:0,mistakeSign:1,mistakes:0}};
+   ai:{derbyAttack:0,derbyCooldown:i*.12,derbyTarget:null,passOffset:0,trafficOffset:0,passHold:0,trafficTimer:0,trafficStarted:false,trafficThrottle:1,blockerDistance:Infinity,straightClock:0,straightPhase:Math.random()*TAU,turnRecovery:0,recovery:0,reaction:0,steer:0,lineOffset:0,nextMistake:aiLevels[difficulty].mistakeEvery*.65+Math.random()*aiLevels[difficulty].mistakeSpread,mistakeTime:0,mistakeType:0,mistakeSign:1,mistakes:0}};
  });
  car=racers[0];opponent=racers[1]||car;ghostImproved=false;startGhostLap();
  progress=car.total;lastS=car.lastS;
@@ -708,7 +745,17 @@ function standings(){return [...racers].sort((a,b)=>{
  if(a.finishTime!==null||b.finishTime!==null){if(a.finishTime===null)return 1;if(b.finishTime===null)return -1;return a.finishTime-b.finishTime}
  return raceDistance(b)-raceDistance(a);
 })}
-function begin(){reset();resetCameras();mode='countdown';count=3.2;$('race-setup').open=false;$('overlay').classList.add('hidden');$('pause').textContent='Ⅱ'}
+let setupVisible=true;
+function setSetupVisible(visible){
+ setupVisible=visible;
+ $('app').classList.toggle('setup-hidden',!visible);
+ $('toggle-setup').setAttribute('aria-expanded',String(visible));
+ $('toggle-setup').textContent=visible?'Hide setup':'Show setup';
+ if(visible&&mode==='running')pause();
+ if(visible&&mode==='countdown'){mode='ready';count=0;$('countdown').textContent='';$('launch-race').innerHTML='Start race <span aria-hidden="true">→</span>'}
+ resize();
+}
+function begin(){reset();resetCameras();mode='countdown';count=3.2;setSetupVisible(false);$('overlay').classList.add('hidden');$('pause').textContent='Ⅱ';$('launch-race').innerHTML='Restart race <span aria-hidden="true">→</span>';canvas.focus?.({preventScroll:true})}
 function flash(t){$('toast').textContent=t;toastTime=1.8}
 function updateHUD(){
  for(const [driver,v] of [['p1',car],['p2',opponent],...humanRacers().slice(2).map(v=>[v.driver,v])]){
@@ -958,6 +1005,8 @@ window.addEventListener('blur',()=>{clearControls();if(mode==='running')pause()}
 for(const side of ['left','right']){const b=$(side);b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);touchControls[side]=true;syncControls()});for(const ev of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(ev,()=>{touchControls[side]=false;syncControls()})}
 $('start').onclick=begin;$('restart').onclick=begin;$('pause').onclick=pause;
 $('sound').onclick=toggleSound;
+ $('toggle-setup').onclick=()=>setSetupVisible(!setupVisible);
+ $('launch-race').onclick=begin;
 for(const driver of HUMAN_DRIVERS)$(driver+'-car').addEventListener('change',e=>{selectCar(driver,e.target.value);e.target.blur()});
 for(const driver of HUMAN_DRIVERS){
  for(const [id,field] of [['hp','hp'],['grid','grid']])$(driver+'-'+id).addEventListener('change',e=>{selectSetup(driver,field,e.target.value);e.target.blur()});
