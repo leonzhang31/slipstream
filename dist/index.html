@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#151918"><meta name="description" content="Two-button drift racing. Nine circuits, four AI levels, Derby, and up to four local players."><title>Slipstream — Drift Circuit</title><link rel="stylesheet" href="style.css?v=26">
+</head><body><main id="app">
+<header><a class="brand" href="./"><span class="logo" aria-hidden="true"><i></i><i></i><i></i></span> SLIPSTREAM</a><p class="header-hint">Automatic acceleration. Just steer.</p><div class="header-actions"><button id="toggle-setup" type="button" aria-controls="race-setup garage-panel" aria-expanded="true">Hide setup</button><button id="sound" aria-label="Enable sound">SOUND OFF</button></div></header>
+<div class="workspace">
+<aside id="race-setup" class="setup-panel" aria-labelledby="setup-title">
+<div class="setup-heading"><h1 id="setup-title">Race setup</h1><p id="setup-summary" class="setup-summary">The Foundry · 2 cars · Solo vs AI</p></div>
+<section class="settings" aria-label="Race options">
+<label class="setting" for="race-mode">RACE MODE<select id="race-mode"><option value="ai">Solo vs AI</option><option value="friend">Local 2–4 players</option><option value="ghost">Personal best chase</option><option value="derby">Derby · contact racing</option></select></label>
+<label class="setting" for="track-select">CIRCUIT<select id="track-select"><optgroup label="Arcade circuits"><option value="foundry">The Foundry · industrial grid</option><option value="velocity">Velocity Ring · speedway oval</option><option value="tidal">Tidal Run · coastal S-bends</option><option value="switchback">Switchback · mountain hairpins</option></optgroup><optgroup label="Derby courses"><option value="scrapyard">Scrapyard Bowl · wide contact course</option></optgroup><optgroup label="Grand Prix · drift editions"><option value="monza">Monza · drift flow</option><option value="spa">Spa-Francorchamps · drift flow</option><option value="silverstone">Silverstone · drift flow</option><option value="interlagos">Interlagos · drift flow</option></optgroup></select></label>
+<label id="car-count-group" class="setting" for="car-count">CARS TOTAL<select id="car-count"><option value="2">2 cars</option><option value="3">3 cars</option><option value="4">4 cars</option><option value="5">5 cars</option><option value="6">6 cars</option><option value="7">7 cars</option><option value="8">8 cars</option><option value="9">9 cars</option><option value="10">10 cars</option><option value="11">11 cars</option><option value="12">12 cars</option><option value="13">13 cars</option><option value="14">14 cars</option><option value="15">15 cars</option><option value="16">16 cars</option><option value="17">17 cars</option><option value="18">18 cars</option><option value="19">19 cars</option><option value="20">20 cars</option></select></label>
+<label id="human-count-group" class="setting" for="human-count" hidden>HUMAN PLAYERS<select id="human-count"><option value="1">1 player</option><option value="2" selected>2 players</option><option value="3">3 players</option><option value="4">4 players</option></select></label>
+<label id="difficulty-group" class="setting" for="difficulty">AI LEVEL<select id="difficulty"><option value="beginner">Beginner</option><option value="standard" selected>Standard</option><option value="advanced">Advanced</option><option value="expert">Expert</option></select></label>
+<label id="rival-style-group" class="setting" for="rival-style">RIVAL STYLE<select id="rival-style"><option value="mixed">Mixed</option><option value="racer">Racer · balanced passing</option><option value="cautious">Cautious · leaves more space</option><option value="aggressive">Aggressive · tight passes</option></select></label>
+</section>
+<p id="mode-help" class="mode-help">Race the AI over three laps. Choose Beginner for an easier first race.</p>
+<div class="section-heading"><h2>Durability</h2><span>Higher = tougher cars</span></div>
+<section class="durability-settings" aria-label="Car durability">
+<label class="setting" for="player-durability">ALL HUMAN PLAYERS<select id="player-durability" aria-describedby="durability-note"><option value="default">Default · mode rules</option><option value="0.5">0.5× · fragile</option><option value="1">1× · standard</option><option value="2">2× · tough</option><option value="3">3× · reinforced</option><option value="5">5× · heavy duty</option><option value="10">10× · maximum</option></select></label>
+<label id="ai-durability-group" class="setting" for="ai-durability">AI OPPONENTS<select id="ai-durability" aria-describedby="durability-note"><option value="default">Default · mode rules</option><option value="0.5">0.5× · fragile</option><option value="1">1× · standard</option><option value="2">2× · tough</option><option value="3">3× · reinforced</option><option value="5">5× · heavy duty</option><option value="10">10× · maximum</option></select></label>
+</section>
+<p id="durability-note" class="setup-note">Default: 1× for everyone, 5× for Derby players.</p>
+<div class="setup-launch">
+<p class="driving-tip">Steer left and right. The car accelerates for you.</p>
+<p id="setup-controls" class="setup-controls">A / D or ← / →</p>
+<button id="launch-race" type="button" class="primary">Start race <span aria-hidden="true">→</span></button>
+<p class="setup-note">P / Esc to pause · R to restart</p>
+</div>
+</aside>
+<div class="play-area">
+<section id="garage-panel" class="garage-panel" aria-labelledby="garage-title"><div class="section-heading"><h2 id="garage-title">Your cars</h2><span>Power and starting position are editable below. Changes reset the race.</span></div>
+<section class="garage" aria-label="Choose your car">
+<div id="p1-car-setting" class="garage-player"><label class="setting" for="p1-car">PLAYER 1 · A / D<select id="p1-car" aria-describedby="p1-car-description"><option value="balanced">Apex · flow</option><option value="agile">Spark · flick</option><option value="drift">Comet · sweep</option></select><span id="p1-car-description" class="car-description">Smooth, predictable drifts · balanced transitions</span></label>
+<div class="car-tuning"><div class="tuning-fields">
+<label for="p1-hp">POWER (HP)<input id="p1-hp" type="number" min="100" max="600" step="10" value="300" inputmode="numeric"></label>
+<label id="p1-grid-setting" class="grid-setting" for="p1-grid">START POSITION<select id="p1-grid"><option value="1">1 · pole</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option></select></label>
+<button id="p1-factory" type="button">Reset</button>
+</div></div></div>
+<div id="p2-car-setting" class="garage-player" hidden><label class="setting" for="p2-car">PLAYER 2 · ← / →<select id="p2-car" aria-describedby="p2-car-description"><option value="balanced">Apex · flow</option><option value="agile">Spark · flick</option><option value="drift">Comet · sweep</option></select><span id="p2-car-description" class="car-description">Smooth, predictable drifts · balanced transitions</span></label>
+<div class="car-tuning"><div class="tuning-fields">
+<label for="p2-hp">POWER (HP)<input id="p2-hp" type="number" min="100" max="600" step="10" value="300" inputmode="numeric"></label>
+<label id="p2-grid-setting" class="grid-setting" for="p2-grid">START POSITION<select id="p2-grid"><option value="1">1 · pole</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option></select></label>
+<button id="p2-factory" type="button">Reset</button>
+</div></div></div>
+<div id="p3-car-setting" class="garage-player" hidden><label class="setting" for="p3-car">PLAYER 3 · J / L<select id="p3-car" aria-describedby="p3-car-description"><option value="balanced">Apex · flow</option><option value="agile">Spark · flick</option><option value="drift">Comet · sweep</option></select><span id="p3-car-description" class="car-description">Smooth, predictable drifts · balanced transitions</span></label>
+<div class="car-tuning"><div class="tuning-fields">
+<label for="p3-hp">POWER (HP)<input id="p3-hp" type="number" min="100" max="600" step="10" value="300" inputmode="numeric"></label>
+<label id="p3-grid-setting" class="grid-setting" for="p3-grid">START POSITION<select id="p3-grid"><option value="1">1 · pole</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option></select></label>
+<button id="p3-factory" type="button">Reset</button>
+</div></div></div>
+<div id="p4-car-setting" class="garage-player" hidden><label class="setting" for="p4-car">PLAYER 4 · V / N<select id="p4-car" aria-describedby="p4-car-description"><option value="balanced">Apex · flow</option><option value="agile">Spark · flick</option><option value="drift">Comet · sweep</option></select><span id="p4-car-description" class="car-description">Smooth, predictable drifts · balanced transitions</span></label>
+<div class="car-tuning"><div class="tuning-fields">
+<label for="p4-hp">POWER (HP)<input id="p4-hp" type="number" min="100" max="600" step="10" value="300" inputmode="numeric"></label>
+<label id="p4-grid-setting" class="grid-setting" for="p4-grid">START POSITION<select id="p4-grid"><option value="1">1 · pole</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option></select></label>
+<button id="p4-factory" type="button">Reset</button>
+</div></div></div>
+</section>
+</section>
+<section id="race-shell" class="race-shell" aria-label="Racing game">
+<div class="circuit-note"><span id="track-name">THE FOUNDRY</span><span id="track-subtitle">Industrial grid</span><a href="https://github.com/bacinger/f1-circuits" target="_blank" rel="noopener noreferrer">Circuit data</a></div>
+<div class="racebar">
+  <section class="player-panel player-one" aria-label="Player 1 race stats">
+    <div class="player-heading"><strong id="p1-name">YOU</strong><span id="p1-keys">A / D or ← / →</span></div>
+    <div class="player-speed"><strong id="speed">0</strong><span>KM/H</span><div class="speedbar"><i id="speedbar"></i></div></div>
+    <div class="player-metrics"><div><span id="lap-label">LAP</span><strong id="lap">01 <small>/ 03</small></strong></div><div><span>POSITION</span><strong id="position">01 <small>/ 02</small></strong></div></div>
+    <div id="p1-gap" class="player-gap" hidden>LEVEL</div>
+    <div class="player-condition"><span id="p1-damage" class="body-condition">BODY 100%</span><span id="p1-draft" class="draft-indicator" hidden>DRAFT</span></div>
+  </section>
+  <div class="race-center"><span class="clock-label">RACE TIME</span><strong id="time">00:00.000</strong><div class="race-actions"><button id="pause" aria-label="Pause race" title="Pause (P)">Ⅱ</button><button id="restart" aria-label="Restart race" title="Restart (R)">↻</button></div></div>
+  <section id="p2-stats" class="player-panel player-two" aria-label="Player 2 race stats" hidden>
+    <div class="player-heading"><strong>PLAYER 2</strong><span id="p2-keys">← / →</span></div>
+    <div class="player-speed"><strong id="p2-speed">0</strong><span>KM/H</span><div class="speedbar"><i id="p2-speedbar"></i></div></div>
+    <div class="player-metrics"><div><span>LAP</span><strong id="p2-lap">01 <small>/ 03</small></strong></div><div><span>POSITION</span><strong id="p2-position">02 <small>/ 02</small></strong></div></div>
+    <div id="p2-gap" class="player-gap">LEVEL</div>
+    <div class="player-condition"><span id="p2-damage" class="body-condition">BODY 100%</span><span id="p2-draft" class="draft-indicator" hidden>DRAFT</span></div>
+  </section>
+  <section id="p3-stats" class="player-panel player-three" aria-label="Player 3 race stats" hidden>
+    <div class="player-heading"><strong>PLAYER 3</strong><span id="p3-keys">J / L</span></div>
+    <div class="player-speed"><strong id="p3-speed">0</strong><span>KM/H</span><div class="speedbar"><i id="p3-speedbar"></i></div></div>
+    <div class="player-metrics"><div><span>LAP</span><strong id="p3-lap">01 <small>/ 03</small></strong></div><div><span>POSITION</span><strong id="p3-position">02 <small>/ 02</small></strong></div></div>
+    <div id="p3-gap" class="player-gap">LEVEL</div>
+    <div class="player-condition"><span id="p3-damage" class="body-condition">BODY 100%</span><span id="p3-draft" class="draft-indicator" hidden>DRAFT</span></div>
+  </section>
+  <section id="p4-stats" class="player-panel player-four" aria-label="Player 4 race stats" hidden>
+    <div class="player-heading"><strong>PLAYER 4</strong><span id="p4-keys">V / N</span></div>
+    <div class="player-speed"><strong id="p4-speed">0</strong><span>KM/H</span><div class="speedbar"><i id="p4-speedbar"></i></div></div>
+    <div class="player-metrics"><div><span>LAP</span><strong id="p4-lap">01 <small>/ 03</small></strong></div><div><span>POSITION</span><strong id="p4-position">02 <small>/ 02</small></strong></div></div>
+    <div id="p4-gap" class="player-gap">LEVEL</div>
+    <div class="player-condition"><span id="p4-damage" class="body-condition">BODY 100%</span><span id="p4-draft" class="draft-indicator" hidden>DRAFT</span></div>
+  </section>
+</div>
+<div class="game"><canvas id="track" tabindex="0" aria-label="Top down race. Automatic acceleration. Player 1 steers with A/D; Player 2 with left/right arrows; Player 3 with J/L; Player 4 with V/N. Solo supports A/D or arrows."></canvas><canvas id="minimap" aria-label="Whole circuit minimap. All racers are shown in their car colors. Human players use green, orange, cyan and purple; other colors identify AI racers."></canvas>
+<div id="drift" class="drift"><span>DRIFT</span><strong id="chain">+0</strong></div>
+<div id="overlay" class="overlay"><div class="start-card"><span class="eyebrow">GRID READY</span><h2>Ready to race.</h2><p id="start-description">Choose a circuit and take the win.</p><button id="start" class="primary">START RACE <span aria-hidden="true">→</span></button><div id="start-hint" class="start-hint">← → OR A / D TO STEER</div></div></div>
+<div id="countdown" class="countdown" aria-live="polite"></div><div id="toast" class="toast" aria-live="polite"></div>
+<div class="touch"><button id="left" aria-label="Steer left">←</button><button id="right" aria-label="Steer right">→</button></div></div>
+<div id="race-details" class="race-details"><span id="rival-status">RIVAL 44 M BEHIND</span><div class="secondary-stats"><span>DRIFT <b id="score">00000</b></span><span>BEST <b id="best">—</b></span></div></div>
+</section>
+<div class="helpbar"><span id="controls-label">← / → OR A / D</span><span>Hard hits damage both cars. <span class="shortcuts">P pause · R restart</span></span></div>
+</div>
+</div>
+</main><script src="data/circuits.js?v=2"></script><script src="game.js?v=37"></script></body></html>
