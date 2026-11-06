@@ -1,8 +1,28 @@
 <!doctype html>
 <html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#151918"><meta name="description" content="Two-button drift racing. Nine circuits, four AI levels, Derby, and up to four local players."><title>Slipstream — Drift Circuit</title><link rel="stylesheet" href="style.css?v=26">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#151918"><meta name="description" content="Two-button drift racing. Nine circuits, four AI levels, Derby, and up to four local players."><title>Slipstream — Drift Circuit</title><link rel="stylesheet" href="style.css?v=28">
 </head><body><main id="app">
-<header><a class="brand" href="./"><span class="logo" aria-hidden="true"><i></i><i></i><i></i></span> SLIPSTREAM</a><p class="header-hint">Automatic acceleration. Just steer.</p><div class="header-actions"><button id="toggle-setup" type="button" aria-controls="race-setup garage-panel" aria-expanded="true">Hide setup</button><button id="sound" aria-label="Enable sound">SOUND OFF</button></div></header>
+<header><a class="brand" href="./"><span class="logo" aria-hidden="true"><i></i><i></i><i></i></span> SLIPSTREAM</a><p class="header-hint">Automatic acceleration. Just steer.</p><div class="header-actions"><button id="profile-button" type="button">Set username</button><button id="toggle-setup" type="button" aria-controls="race-setup garage-panel" aria-expanded="true">Hide setup</button><button id="sound" aria-label="Enable sound">SOUND OFF</button></div></header>
+<section id="online-panel" class="online-panel" aria-label="Browser multiplayer">
+<div><strong>Race with friends</strong><p>Host here in your browser. Share a room code or invite link.</p></div>
+<div class="online-actions"><button id="online-host" class="primary" type="button">Host race</button><label class="sr-only" for="online-code">Room code or invite link</label><input id="online-code" placeholder="Room code" maxlength="200" autocomplete="off" autocapitalize="characters" spellcheck="false"><button id="online-join" type="button">Join room</button></div>
+<p id="online-status" role="status"></p>
+</section>
+<section id="lan-panel" class="lan-panel" aria-label="Same-Wi-Fi multiplayer lobby" hidden>
+<div class="lan-heading"><div><strong id="lan-title">Wi-Fi multiplayer</strong><p id="lan-status" role="status">Connecting…</p></div><button id="lan-leave" type="button" hidden>Leave room</button><button id="lan-reconnect" type="button" hidden>Try again</button><button id="lan-lobby" type="button" hidden>Return to lobby</button></div>
+<div class="lan-body">
+<div class="lan-invite"><label for="lan-link">SEND THIS LINK TO YOUR FRIENDS</label><div class="lan-copy-row"><input id="lan-link" type="text" readonly aria-label="Join link"><button id="lan-copy" type="button">Copy link</button></div><p id="lan-invite-help">Same Wi-Fi · up to 4 players · no installs for guests</p><details><summary>Connection help</summary><p id="lan-connection-help">Keep the hosting window open. Allow incoming connections if macOS asks. Guest or school Wi-Fi may block connections between devices.</p><div id="lan-other-links"></div><p id="lan-network-help" hidden>No Wi-Fi address found. Connect the host to Wi-Fi and restart the launcher.</p></details></div>
+<ul id="lan-players" class="lan-players" aria-label="Players in lobby"></ul>
+<div class="lan-personal">
+<label for="lan-name">USERNAME<input id="lan-name" value="Driver" maxlength="16" autocomplete="nickname"></label>
+<label for="lan-car">YOUR CAR<select id="lan-car"><option value="balanced">Apex · flow</option><option value="agile">Spark · flick</option><option value="drift">Comet · sweep</option></select></label>
+<label for="lan-hp">POWER (HP)<input id="lan-hp" type="number" min="100" max="600" step="10" value="300"></label>
+<label for="lan-grid">START POSITION<input id="lan-grid" type="number" min="0" max="20" step="1" value="0" aria-describedby="lan-grid-help"></label>
+<span id="lan-grid-help">Start position 0 = automatic</span>
+<div class="lan-buttons"><button id="lan-ready" type="button" aria-pressed="false">Ready</button><button id="lan-start" type="button" class="primary" hidden>Start race</button></div>
+</div>
+</div>
+</section>
 <div class="workspace">
 <aside id="race-setup" class="setup-panel" aria-labelledby="setup-title">
 <div class="setup-heading"><h1 id="setup-title">Race setup</h1><p id="setup-summary" class="setup-summary">The Foundry · 2 cars · Solo vs AI</p></div>
@@ -21,7 +41,7 @@
 <label id="ai-durability-group" class="setting" for="ai-durability">AI OPPONENTS<select id="ai-durability" aria-describedby="durability-note"><option value="default">Default · mode rules</option><option value="0.5">0.5× · fragile</option><option value="1">1× · standard</option><option value="2">2× · tough</option><option value="3">3× · reinforced</option><option value="5">5× · heavy duty</option><option value="10">10× · maximum</option></select></label>
 </section>
 <p id="durability-note" class="setup-note">Default: 1× for everyone, 5× for Derby players.</p>
-<div class="setup-launch">
+<div id="setup-launch" class="setup-launch">
 <p class="driving-tip">Steer left and right. The car accelerates for you.</p>
 <p id="setup-controls" class="setup-controls">A / D or ← / →</p>
 <button id="launch-race" type="button" class="primary">Start race <span aria-hidden="true">→</span></button>
@@ -100,4 +120,12 @@
 <div class="helpbar"><span id="controls-label">← / → OR A / D</span><span>Hard hits damage both cars. <span class="shortcuts">P pause · R restart</span></span></div>
 </div>
 </div>
-</main><script src="data/circuits.js?v=2"></script><script src="game.js?v=37"></script></body></html>
+</main>
+<dialog id="profile-dialog" class="profile-dialog" aria-labelledby="profile-title">
+<form id="profile-form">
+<h2 id="profile-title">Choose your username</h2><p>This name appears on your car and in race lobbies. Saved in this browser.</p>
+<label for="profile-name">USERNAME<input id="profile-name" minlength="3" maxlength="16" pattern="[A-Za-z0-9_]{3,16}" autocomplete="nickname" required aria-describedby="profile-help profile-error"></label>
+<p id="profile-help">3–16 letters, numbers or underscores. Each name must be unique in a room.</p><p id="profile-error" role="alert"></p>
+<div><button id="profile-cancel" type="button">Cancel</button><button class="primary" type="submit">Save username</button></div>
+</form></dialog>
+<!-- LAN_CONFIG --><script src="usernames.js?v=1"></script><script src="profile.js?v=1"></script><script src="data/circuits.js?v=2"></script><script src="game.js?v=39"></script><script src="lan-game.js?v=2"></script><script src="lan-client.js?v=2"></script><script src="online.js?v=1"></script></body></html>

@@ -389,3 +389,60 @@ canvas { display: block; width: 100%; height: 100%; }
   .setup-panel > .setup-note { margin-top: 8px; }
   .setup-launch { margin-top: 12px; }
 }
+
+/* The local server enables this lobby; static hosting keeps the original game. */
+.lan-panel { margin-top: 14px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); padding: 14px 16px; }
+.lan-heading { display: flex; justify-content: space-between; gap: 16px; align-items: center; }
+.lan-heading strong { color: var(--lime); font-size: 13px; }
+.lan-heading p { color: var(--muted); font-size: 11px; margin: 3px 0 0; }
+.lan-body { display: grid; grid-template-columns: minmax(240px, 1.4fr) minmax(150px, 1fr) minmax(250px, 1.4fr); gap: 24px; padding-top: 14px; }
+.lan-panel label { display: block; color: var(--muted); font: 9px/1.5 var(--mono); }
+.lan-panel input, .lan-panel select { width: 100%; min-width: 0; height: 34px; margin-top: 5px; padding: 0 9px; border: 1px solid #465142; background: var(--field); color: var(--text); font: 12px 'DM Sans', sans-serif; }
+.lan-panel button { border: 1px solid #465142; background: var(--field); color: var(--text); padding: 8px 12px; font-size: 11px; white-space: nowrap; }
+.lan-panel button:hover { border-color: var(--lime); }
+.lan-panel button:disabled { opacity: .45; cursor: default; }
+.lan-panel .primary, #lan-ready[aria-pressed=true] { background: var(--lime); color: var(--ink); }
+.lan-copy-row { display: flex; gap: 8px; align-items: end; }
+.lan-copy-row input { font-size: 11px; }
+.lan-invite p, .lan-invite details { margin: 7px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+.lan-invite summary { cursor: pointer; color: var(--text); }
+#lan-other-links { overflow-wrap: anywhere; user-select: all; }
+.lan-players { list-style: none; padding: 0; margin: 0; }
+.lan-players li { border-left: 2px solid var(--driver); padding: 2px 0 2px 9px; margin-bottom: 7px; display: flex; justify-content: space-between; gap: 10px; font-size: 11px; }
+.lan-players li span:last-child { color: var(--muted); font-size: 10px; white-space: nowrap; }
+.lan-personal { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 10px; }
+.lan-personal > span { font-size: 9px; color: var(--muted); }
+.lan-buttons { grid-column: 1/-1; display: flex; gap: 8px; }
+.lan-buttons button { flex: 1; }
+.lan-buttons .primary { margin: 0; text-align: center; }
+.lan-session .garage-panel, .lan-session .secondary-stats { display: none; }
+.lan-session .player-heading strong { overflow-wrap: anywhere; }
+.lan-session .workspace { height: calc(100dvh - 340px); min-height: 540px; }
+.lan-session.setup-hidden .lan-body { display: none; }
+.lan-session.setup-hidden .workspace { height: calc(100dvh - 154px); min-height: 450px; }
+@media (max-width: 1000px) { .lan-body { grid-template-columns: 1fr 1fr; gap: 16px; }.lan-personal { grid-column: 1/-1; grid-template-columns: repeat(4,minmax(0,1fr)); }.lan-buttons { grid-column: 3/-1; }.lan-personal > span { grid-column: 1/3; }.lan-session .workspace { height: auto; } }
+@media (max-width: 640px) { .lan-body { grid-template-columns: 1fr; }.lan-personal { grid-template-columns: 1fr 1fr; }.lan-buttons { grid-column: 1/-1; }.lan-heading { align-items: start; }.lan-panel { padding: 12px; }.lan-session.setup-hidden .workspace { height: calc(100dvh - 180px); } }
+
+.online-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; margin-top: 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+.online-panel strong { font-size: 13px; }
+.online-panel p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+.online-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.online-actions button { padding: 10px 14px; border: 1px solid #465142; background: var(--field); color: var(--text); font-size: 12px; white-space: nowrap; }
+.online-actions .primary { width: auto; margin: 0 12px 0 0; background: var(--lime); color: var(--ink); text-align: center; letter-spacing: 0; }
+.online-actions button:disabled { opacity: .5; cursor: wait; }
+#online-code { min-width: 0; width: 170px; height: 39px; padding: 0 12px; border: 1px solid #465142; background: var(--field); color: var(--text); font: 12px var(--mono); }
+#online-status:not(:empty) { flex-basis: 100%; color: var(--orange); margin: 0; }
+.lan-session #online-panel { display: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); border: 0; }
+.profile-dialog { width: min(420px,calc(100% - 32px)); padding: 26px; border: 1px solid #65764f; border-top: 3px solid var(--lime); border-radius: 4px; background: var(--surface); color: var(--text); }
+.profile-dialog::backdrop { background: #0c120dd9; }
+.profile-dialog h2 { margin: 0 0 10px; font: 600 30px/1.1 var(--display); }
+.profile-dialog p { margin: 0 0 18px; font-size: 12px; line-height: 1.7; color: var(--muted); }
+.profile-dialog label { display: block; font: 9px var(--mono); color: var(--muted); letter-spacing: .7px; }
+.profile-dialog input { width: 100%; height: 44px; margin-top: 8px; padding: 0 12px; border: 1px solid #65764f; background: var(--field); color: var(--text); font: 16px 'DM Sans',sans-serif; }
+.profile-dialog #profile-help { margin: 8px 0; font-size: 10px; }
+.profile-dialog #profile-error { color: var(--orange); font-size: 11px; margin: 8px 0; }
+.profile-dialog form > div { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 22px; }
+.profile-dialog button { padding: 12px 16px; border: 1px solid var(--line); background: var(--field); color: var(--text); }
+.profile-dialog .primary { margin: 0; width: auto; background: var(--lime); color: var(--ink); }
+@media (max-width: 800px) { .online-actions { margin-left: 0; width: 100%; }.online-actions .primary { margin-right: auto; }#online-code { width: min(34vw,170px); }.header-actions { flex-wrap: wrap; justify-content: flex-end; } }

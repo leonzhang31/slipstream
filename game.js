@@ -110,6 +110,7 @@ const aiLevels={
 function selectDifficulty(value){difficulty=Object.hasOwn(aiLevels,value)?value:'standard';try{localStorage.setItem('slipstream-difficulty',difficulty)}catch{}selectTrack(track.id)}
 function clearControls(){heldKeys.clear();for(const input of [...Object.values(playerInputs),touchControls])input.left=input.right=false}
 function syncControls(){
+ if(window.SlipstreamLAN?.active){controls.left=touchControls.left||heldKeys.has('a')||heldKeys.has('arrowleft');controls.right=touchControls.right||heldKeys.has('d')||heldKeys.has('arrowright');return}
  controls.left=touchControls.left||heldKeys.has('a')||(humanCount()===1&&heldKeys.has('arrowleft'));controls.right=touchControls.right||heldKeys.has('d')||(humanCount()===1&&heldKeys.has('arrowright'));
  friendControls.left=humanCount()>1&&heldKeys.has('arrowleft');friendControls.right=humanCount()>1&&heldKeys.has('arrowright');
  extraControls.p3.left=humanCount()>2&&heldKeys.has('j');extraControls.p3.right=humanCount()>2&&heldKeys.has('l');
@@ -301,7 +302,7 @@ function selectTrack(id){
  for(const number of [3,4])$('race-shell').classList.toggle('players-'+number,people===number);
  for(let i=1;i<4;i++)$(HUMAN_DRIVERS[i]+'-stats').hidden=i>=people;
  $('p1-gap').hidden=people===1;$('race-details').hidden=people>1;
- $('p1-name').textContent=people>1?'PLAYER 1':'YOU';$('lap-label').textContent='LAP';
+ $('p1-name').textContent=window.SlipstreamProfile?.username||(people>1?'PLAYER 1':'YOU');$('lap-label').textContent='LAP';
  $('start-description').textContent=people>1?people+' players on one keyboard. Three laps. First human finisher ends the race.':aiLevels[difficulty].description+' Three laps to take the win.';
  updateDrivingLabels();
  if(raceType==='derby')$('start-description').textContent=fieldCount()+'-car derby. Players: '+groupDurability('players')+'× durability'+(hasAI?' · AI: '+groupDurability('ai')+'×':'')+'. Every car can wreck. Finish three laps'+(hasAI?' or wreck all '+(fieldCount()-people)+' AI rivals':'')+'. Compact grid, aggressive drivers, heavy contact.';
@@ -397,11 +398,12 @@ function updateEngineAudio(){
  const active=mode==='running'&&soundOn;
  gain.gain.setTargetAtTime(active?.025:0,audio.currentTime,.025);
  engineVoices.forEach((voice,i)=>{
-  const v=racers.find(v=>v.driver===HUMAN_DRIVERS[i])||car,volume=v.wrecked||i>=humanCount()?0:.7*Math.min(1,2/humanCount());
+  const local=window.SlipstreamLAN?.active?window.SlipstreamGame.vehicle():null;
+  const v=local||racers.find(v=>v.driver===HUMAN_DRIVERS[i])||car,volume=v.wrecked||local&&i>0||!local&&i>=humanCount()?0:local?.7:.7*Math.min(1,2/humanCount());
   const speed=Math.hypot(v.vx,v.vy);
   voice.osc.frequency.setTargetAtTime(40+speed*.45,audio.currentTime,.025);
   voice.gain.gain.setTargetAtTime(volume,audio.currentTime,.02);
-  if(voice.pan)voice.pan.pan.setTargetAtTime(humanCount()>1&&i<humanCount()?-.65+1.3*i/(humanCount()-1):0,audio.currentTime,.05);
+  if(voice.pan)voice.pan.pan.setTargetAtTime(!local&&humanCount()>1&&i<humanCount()?-.65+1.3*i/(humanCount()-1):0,audio.currentTime,.05);
  });
 }
 function toggleSound(){
@@ -731,7 +733,7 @@ function reset(){
   const slot=slots[i],startDistance=-slot*(raceType==='derby'?52:72),grid=sampleTrack(startDistance),offset=slot===0?0:(slot%2?1:-1)*Math.min(32,ROAD*.17);
   return{x:grid.x-Math.sin(grid.angle)*offset,y:grid.y+Math.cos(grid.angle)*offset,vx:0,vy:0,spin:0,angle:grid.angle,steer:0,draft:0,drifting:false,tireTimer:0,damage:0,damageCooldown:0,damagePeak:0,wallDamageCooldown:0,wallDamagePeak:0,hitStun:0,dentX:0,dentY:0,smokeTimer:0,model:i<humanCount()?carChoices[HUMAN_DRIVERS[i]]:'balanced',
    personality:raceType==='derby'?'aggressive':rivalStyle==='mixed'?['racer','cautious','aggressive'][(Math.max(1,i)-1)%3]:rivalStyle,boostCharge:0,boostTimer:0,boostCooldown:0,boostWindow:0,
-   driver:i<humanCount()?HUMAN_DRIVERS[i]:'ai',color:racerColors[i],label:i<humanCount()?(humanCount()>1?'P'+(i+1):'YOU'):`AI ${i-humanCount()+1}`,
+   driver:i<humanCount()?HUMAN_DRIVERS[i]:'ai',color:racerColors[i],label:i===0&&window.SlipstreamProfile?.username?window.SlipstreamProfile.username:i<humanCount()?(humanCount()>1?'P'+(i+1):'YOU'):`AI ${i-humanCount()+1}`,
    total:startDistance,lastS:((startDistance%circuitLength)+circuitLength)%circuitLength,finishTime:null,wrecked:false,wreckDistance:0,
    ai:{derbyAttack:0,derbyCooldown:i*.12,derbyTarget:null,passOffset:0,trafficOffset:0,passHold:0,trafficTimer:0,trafficStarted:false,trafficThrottle:1,blockerDistance:Infinity,straightClock:0,straightPhase:Math.random()*TAU,turnRecovery:0,recovery:0,reaction:0,steer:0,lineOffset:0,nextMistake:aiLevels[difficulty].mistakeEvery*.65+Math.random()*aiLevels[difficulty].mistakeSpread,mistakeTime:0,mistakeType:0,mistakeSign:1,mistakes:0}};
  });
@@ -755,9 +757,11 @@ function setSetupVisible(visible){
  if(visible&&mode==='countdown'){mode='ready';count=0;$('countdown').textContent='';$('launch-race').innerHTML='Start race <span aria-hidden="true">→</span>'}
  resize();
 }
-function begin(){reset();resetCameras();mode='countdown';count=3.2;setSetupVisible(false);$('overlay').classList.add('hidden');$('pause').textContent='Ⅱ';$('launch-race').innerHTML='Restart race <span aria-hidden="true">→</span>';canvas.focus?.({preventScroll:true})}
+function begin(){if(window.SlipstreamLAN?.active){window.SlipstreamLAN.start();return}reset();resetCameras();mode='countdown';count=3.2;setSetupVisible(false);$('overlay').classList.add('hidden');$('pause').textContent='Ⅱ';$('launch-race').innerHTML='Restart race <span aria-hidden="true">→</span>';canvas.focus?.({preventScroll:true})}
 function flash(t){$('toast').textContent=t;toastTime=1.8}
 function updateHUD(){
+ if(window.SlipstreamLAN?.active){window.SlipstreamGame.hud();return}
+ if(window.SlipstreamProfile?.username)setText('p1-name',window.SlipstreamProfile.username);
  for(const [driver,v] of [['p1',car],['p2',opponent],...humanRacers().slice(2).map(v=>[v.driver,v])]){
   setText(driver+'-damage',v.wrecked?'WRECKED · DNF':`BODY ${Math.max(1,Math.ceil((1-(v.damage||0))*100))}%`);
   $(driver+'-damage').classList.toggle('damaged',(v.damage||0)>.5);
@@ -815,14 +819,15 @@ function finish(winner=1){
  if(gain)gain.gain.setTargetAtTime(0,audio.currentTime,.05);
  const friend=humanCount()>1,won=standings()[0]===car;
  const place=standings().indexOf(finisher)+1;
+ const winnerName=winner===1&&window.SlipstreamProfile?.username?window.SlipstreamProfile.username:'Player '+winner;
  if(raceType==='derby'){
   const wrecks=racers.filter(v=>v.driver==='ai'&&v.wrecked).length;
-  $('overlay').classList.remove('hidden');document.querySelector('.start-card').innerHTML=`<h2>${humanCount()>1?'Player '+winner:'Derby'}<br><em>${humanCount()>1?'wins.':'complete.'}</em></h2><p>RIVALS WRECKED &nbsp; ${wrecks} / ${racers.filter(v=>v.driver==='ai').length}<br>RACE TIME &nbsp; ${timeString(elapsed)}</p><button id="again" class="primary">MORE CHAOS <span>↗</span></button>`;$('again').onclick=begin;return;
+  $('overlay').classList.remove('hidden');document.querySelector('.start-card').innerHTML=`<h2>${humanCount()>1?winnerName:'Derby'}<br><em>${humanCount()>1?'wins.':'complete.'}</em></h2><p>RIVALS WRECKED &nbsp; ${wrecks} / ${racers.filter(v=>v.driver==='ai').length}<br>RACE TIME &nbsp; ${timeString(elapsed)}</p><button id="again" class="primary">MORE CHAOS <span>↗</span></button>`;$('again').onclick=begin;return;
  }
  if(raceType==='ghost'){
   $('overlay').classList.remove('hidden');document.querySelector('.start-card').innerHTML=`<h2>${ghostImproved?'New personal<br><em>best.</em>':'Personal best<br><em>chase.</em>'}</h2><p>BEST LAP &nbsp; ${bestLap?timeString(bestLap):'—'}<br>${!personalGhost?'No valid ghost lap recorded.':ghostPersisted?'Ghost saved for this circuit and car.':'Ghost kept this session; browser storage is full.'}</p><button id="again" class="primary">CHASE IT AGAIN <span>↗</span></button>`;$('again').onclick=begin;return;
  }
- const title=raceType==='ghost'?(ghostImproved?'New personal<br><em>best.</em>':'Personal best<br><em>chase.</em>'):friend?`Player ${winner}<br><em>finishes #${place}.</em>`:(won?'You take<br><em>the win.</em>':'Chase the<br><em>next one.</em>');
+ const title=raceType==='ghost'?(ghostImproved?'New personal<br><em>best.</em>':'Personal best<br><em>chase.</em>'):friend?`${winnerName}<br><em>finishes #${place}.</em>`:(won?'You take<br><em>the win.</em>':'Chase the<br><em>next one.</em>');
  $('overlay').classList.remove('hidden');document.querySelector('.start-card').innerHTML=`<h2>${title}</h2><p>${friend?'FINISH TIME':'RACE TIME'} &nbsp; ${timeString(elapsed)}<br>${friend?`FIELD POSITION &nbsp; ${place} / ${racers.length}`:`POSITION &nbsp; ${place} / ${racers.length}<br>DRIFT POINTS &nbsp; ${Math.floor(score).toLocaleString()}<br>BEST LAP &nbsp; ${bestLap?timeString(bestLap):'—'}`}</p><button id="again" class="primary">${friend?'RACE AGAIN':'CHASE IT AGAIN'} <span>↗</span></button><div class="start-hint">${$('controls-label').textContent}</div>`;$('again').onclick=begin;
 }
 
@@ -869,10 +874,11 @@ function step(dt){
 const mini=$('minimap'),miniCtx=mini.getContext('2d');
 let viewport={w:0,h:0,dpr:1},cameras=[];
 function viewRects(){
+ if(window.SlipstreamLAN?.active)return [{x:0,y:0,w:viewport.w,h:viewport.h}];
  const count=humanCount(),columns=count===1?1:2,rows=count>2?2:1,w=viewport.w/columns,h=viewport.h/rows;
  return Array.from({length:count},(_,i)=>({x:i%columns*w,y:Math.floor(i/columns)*h,w,h}));
 }
-function resetCameras(){if(!car||!opponent)return;const subjects=humanRacers();if(!subjects.length)subjects.push(car);if(subjects.length===1)subjects.push(opponent);cameras=subjects.map(v=>({x:v.x,y:v.y,zoom:1,racer:v}))}
+function resetCameras(){if(!car||!opponent)return;const subjects=window.SlipstreamLAN?.active?[window.SlipstreamGame.vehicle()]:humanRacers();if(!subjects.length)subjects.push(car);if(subjects.length===1&&!window.SlipstreamLAN?.active)subjects.push(opponent);cameras=subjects.map(v=>({x:v.x,y:v.y,zoom:1,racer:v}))}
 function resize(){
  const r=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2);
  canvas.width=Math.round(r.width*dpr);canvas.height=Math.round(r.height*dpr);viewport={w:r.width,h:r.height,dpr};
@@ -962,7 +968,9 @@ function drawMinimap(){
   c.save();c.translate(pose.x,pose.y);c.rotate(pose.angle);c.beginPath();c.moveTo(5/m.scale,0);c.lineTo(-3/m.scale,-3/m.scale);c.lineTo(-3/m.scale,3/m.scale);c.closePath();c.fillStyle=v.color;c.fill();c.strokeStyle='#142019';c.lineWidth=.8/m.scale;c.stroke();c.restore();
  }
  const ghost=ghostPose();if(ghost){c.save();c.translate(ghost.x,ghost.y);c.rotate(ghost.angle);c.globalAlpha=.6;c.fillStyle='#e4f7ff';c.beginPath();c.moveTo(5/m.scale,0);c.lineTo(-3/m.scale,-3/m.scale);c.lineTo(-3/m.scale,3/m.scale);c.closePath();c.fill();c.restore()}
- c.restore();c.font='8px monospace';c.fillStyle='#d4fb71';c.fillText(humanCount()>1?'P1':'YOU',10,m.h-8);c.fillStyle='#ff9b66';c.fillText(humanCount()>2?'P1–P'+humanCount():humanCount()===2?'P2':raceType==='ghost'?'PB':'AI',m.w-24,m.h-8);
+ c.restore();c.font='8px monospace';
+ if(window.SlipstreamLAN?.active){c.fillStyle=window.SlipstreamGame.vehicle().color;c.fillText('YOU',10,m.h-8);c.fillStyle='#a0aa9e';c.fillText('ALL CARS',m.w-56,m.h-8);return}
+ c.fillStyle='#d4fb71';c.fillText(humanCount()>1?'P1':'YOU',10,m.h-8);c.fillStyle='#ff9b66';c.fillText(humanCount()>2?'P1–P'+humanCount():humanCount()===2?'P2':raceType==='ghost'?'PB':'AI',m.w-24,m.h-8);
 }
 
 function drawCar(v,color,label){
@@ -990,7 +998,7 @@ function drawCar(v,color,label){
 }
 
 function carStartAngle(){return Math.atan2(points[1].y-points[0].y,points[1].x-points[0].x)}
-function pause(){if(mode==='running'){mode='paused';$('countdown').textContent='PAUSED';$('pause').textContent='▶';clearControls()}else if(mode==='paused'){mode='running';$('countdown').textContent='';$('pause').textContent='Ⅱ'}if(gain&&mode!=='running')gain.gain.setTargetAtTime(0,audio.currentTime,.05)}
+function pause(){if(window.SlipstreamLAN?.active){window.SlipstreamLAN.togglePause();return}if(mode==='running'){mode='paused';$('countdown').textContent='PAUSED';$('pause').textContent='▶';clearControls()}else if(mode==='paused'){mode='running';$('countdown').textContent='';$('pause').textContent='Ⅱ'}if(gain&&mode!=='running')gain.gain.setTargetAtTime(0,audio.currentTime,.05)}
 window.addEventListener('keydown',e=>{
  if(['SELECT','INPUT','TEXTAREA'].includes(e.target?.tagName))return;
  const k=e.key.toLowerCase();if(e.target?.tagName==='BUTTON'&&(k===' '||k==='enter'))return;
@@ -1000,8 +1008,8 @@ window.addEventListener('keydown',e=>{
  if(!e.repeat&&(k==='enter'||k===' ')&&(mode==='ready'||mode==='finished'))begin();
 });
 window.addEventListener('keyup',e=>{heldKeys.delete(e.key.toLowerCase());syncControls()});
-window.addEventListener('blur',()=>{clearControls();if(mode==='running')pause()});
- document.addEventListener('visibilitychange',()=>{if(document.hidden){clearControls();if(mode==='running')pause()}});
+window.addEventListener('blur',()=>{clearControls();if(!window.SlipstreamLAN?.active&&mode==='running')pause()});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden){clearControls();if(!window.SlipstreamLAN?.active&&mode==='running')pause()}});
 for(const side of ['left','right']){const b=$(side);b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);touchControls[side]=true;syncControls()});for(const ev of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(ev,()=>{touchControls[side]=false;syncControls()})}
 $('start').onclick=begin;$('restart').onclick=begin;$('pause').onclick=pause;
 $('sound').onclick=toggleSound;
@@ -1015,6 +1023,7 @@ for(const driver of HUMAN_DRIVERS){
 let previous=null,accumulator=0;
 function frame(t){
  const frameDt=previous===null?0:Math.max(0,Math.min((t-previous)/1000,.05));previous=t;accumulator+=frameDt;
+ if(window.SlipstreamLAN?.active){accumulator=0;window.SlipstreamLAN.frame(t,frameDt);updateEngineAudio();updateHUD();renderAlpha=1;updateCameras(frameDt);draw();requestAnimationFrame(frame);return}
  inFrame=true;try{while(accumulator>=1/120){step(1/120);accumulator-=1/120}}finally{inFrame=false}
  updateEngineAudio();updateHUD();renderAlpha=mode==='running'?accumulator*120:1;
  updateCameras(frameDt);draw();renderAlpha=1;requestAnimationFrame(frame);
@@ -1041,3 +1050,4 @@ try{
  const grids=JSON.parse(localStorage.getItem('slipstream-derby-grids')||'{}');for(const d of ['p2','p3','p4'])if(Number.isFinite(grids[d]))derbyGrids[d]=clamp(Math.round(grids[d]),1,20);
 }catch{}
  window.addEventListener('resize',resize);selectTrack(savedTrack);resize();requestAnimationFrame(frame);
+window.addEventListener('slipstream-username',()=>{if(!window.SlipstreamLAN?.active){car.label=window.SlipstreamProfile.username;updateHUD()}});
